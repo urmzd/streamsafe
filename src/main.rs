@@ -1,5 +1,7 @@
+use ctrlc;
 use gst::{glib::RustClosure, prelude::*, FlowReturn};
 use gstreamer as gst;
+use std::sync::mpsc::channel;
 use tracing::info;
 
 pub const DEFAULT_RTSP_URI: &str = "localhost:8554/vsa";
@@ -85,29 +87,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     pipeline.set_state(gst::State::Playing)?;
 
-    let bus = pipeline.bus().unwrap();
+    let (tx, rx) = channel();
 
-    for msg in bus.iter_timed(gst::ClockTime::NONE) {
-        use gst::MessageView;
+    ctrlc::set_handler(move || tx.send(()).expect("Could not send signal"))
+        .expect("Problem setting up");
 
-        match msg.view() {
-            MessageView::Error(err) => {
-                info!(
-                    "Error received from element {:?}: {} ({:?})",
-                    err.src().map(|s| s.path_string()),
-                    err.error(),
-                    err.debug()
-                );
-            }
-            MessageView::Eos(_) => {
-                info!("End of stream reached.");
-                break;
-            }
-            _ => {}
+    loop {
+        let signal_recieved = rx.recv().map(|_| true).unwrap_or(false);
+
+        if signal_recieved {
+            info!("Signal received. Exiting.");
+            pipeline.set_state(gst::State::Null)?;
+            break;
         }
     }
-
-    pipeline.set_state(gst::State::Null)?;
 
     Ok(())
 }
