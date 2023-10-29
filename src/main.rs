@@ -1,9 +1,9 @@
-use gst::{glib::RustClosure, prelude::*};
+use gst::{glib::RustClosure, prelude::*, FlowReturn};
 use gstreamer as gst;
 use tracing::info;
 
-const DEFAULT_RTSP_URI: &str = "rtsp://10.101.8.51:554/tcp/av0_1";
-const FRAMES_TO_COLLECT: usize = 300; // Set X frames to collect
+pub const DEFAULT_RTSP_URI: &str = "rtsp://localhost:8554/vsa";
+pub const FRAMES: u32 = 300;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
@@ -14,43 +14,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     gst::init()?;
 
+    // Elements
     let src = gst::ElementFactory::make("rtspsrc").build()?;
-    let depay = gst::ElementFactory::make("rtph265depay").build()?;
-    let parse = gst::ElementFactory::make("h265parse").build()?;
-    let decode = gst::ElementFactory::make("avdec_h265").build()?;
+    let depay = gst::ElementFactory::make("rtph264depay").build()?;
+    let parse = gst::ElementFactory::make("h264parse").build()?;
+    let decode = gst::ElementFactory::make("avdec_h264").build()?;
     let convert = gst::ElementFactory::make("videoconvert").build()?;
-    let enc = gst::ElementFactory::make("x264enc").build()?; // Replace 'pngenc' with 'x264enc'
-    let mux = gst::ElementFactory::make("mp4mux").build()?; // Add an MP4 multiplexer element
+    let encoder = gst::ElementFactory::make("pngenc").build()?; // lossless compression
+    //let sink = gst::ElementFactory::make("multifilesink").build()?;
+    //sink.set_property_from_str("location", "img%d.jpeg");
     let sink = gst::ElementFactory::make("appsink").build()?;
 
     let pipeline = gst::Pipeline::with_name("test-pipeline");
-    pipeline.add_many(&[&src, &depay, &parse, &decode, &convert, &enc, &mux, &sink])?;
-    gst::Element::link_many(&[&depay, &parse, &decode, &convert, &enc, &mux, &sink])?;
+    let links = [&src, &depay, &parse, &decode, &convert, &encoder, &sink];
+    pipeline.add_many(&links)?;
+    gst::Element::link_many(&links[1..])?;
 
     // Allows us to use the 'appsink' element to get frames and metadata
     sink.set_property("emit-signals", &true);
+    sink.set_property("max-buffers", &FRAMES);
 
     // Ensures that we're reading from the default stream.
     src.set_property_from_str("location", DEFAULT_RTSP_URI);
+    src.set_property_from_str("protocols", "tcp");
 
-
-
-    let sink_clone = sink.clone();
-    sink_clone.connect_closure(
+    sink.connect_closure(
         "new-sample",
         false,
         RustClosure::new(|value| {
-            // g_signal_emit_by_name 
-            //gst::g_signal_emit_by_name()
-            
+            // cast value[0] to GstElement
+            //let internal_app_sink = value.get(0).downcast_ref::<gst::Element>();
+            let internal_app_sink = value.get(0).unwrap().get::<gst::Element>().unwrap();
+            let sample = internal_app_sink.emit_by_name::<gst::Sample>("pull-sample", &[]);
 
-
-            // let sample = sink_clone.emit_by_name::<gst::Sample>("pull-sample", &[]);
+            info!("Received sample: {:?}", sample);
 
             // get the sample
-
-            
-            None
+           Some(FlowReturn::Ok.into())
         }),
     );
 
@@ -105,8 +105,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pipeline.set_state(gst::State::Null)?;
 
     Ok(())
-}
-
-struct Metadata {
-    // Define the structure of metadata here
 }
