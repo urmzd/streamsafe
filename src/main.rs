@@ -16,27 +16,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Elements
     let src = gst::ElementFactory::make("rtspsrc").build()?;
+    // Ensures that we're reading from the default stream.
+    src.set_property_from_str("location", DEFAULT_RTSP_URI);
+    src.set_property_from_str("protocols", "tcp");
+
     let depay = gst::ElementFactory::make("rtph264depay").build()?;
     let parse = gst::ElementFactory::make("h264parse").build()?;
     let decode = gst::ElementFactory::make("avdec_h264").build()?;
     let convert = gst::ElementFactory::make("videoconvert").build()?;
-    let encoder = gst::ElementFactory::make("pngenc").build()?; // lossless compression
+    // lossless compression
+    let encoder = gst::ElementFactory::make("pngenc").build()?;
     //let sink = gst::ElementFactory::make("multifilesink").build()?;
     //sink.set_property_from_str("location", "img%d.jpeg");
     let sink = gst::ElementFactory::make("appsink").build()?;
+    // Allows us to use the 'appsink' element to get frames and metadata
+    sink.set_property("emit-signals", &true);
+    sink.set_property("max-buffers", &FRAMES);
 
     let pipeline = gst::Pipeline::with_name("test-pipeline");
     let links = [&src, &depay, &parse, &decode, &convert, &encoder, &sink];
     pipeline.add_many(&links)?;
     gst::Element::link_many(&links[1..])?;
-
-    // Allows us to use the 'appsink' element to get frames and metadata
-    sink.set_property("emit-signals", &true);
-    sink.set_property("max-buffers", &FRAMES);
-
-    // Ensures that we're reading from the default stream.
-    src.set_property_from_str("location", DEFAULT_RTSP_URI);
-    src.set_property_from_str("protocols", "tcp");
 
     sink.connect_closure(
         "new-sample",
@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             info!("Received sample: {:?}", sample);
 
             // get the sample
-           Some(FlowReturn::Ok.into())
+            Some(FlowReturn::Ok.into())
         }),
     );
 
