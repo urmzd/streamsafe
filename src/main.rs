@@ -2,7 +2,7 @@ use gst::{glib::RustClosure, prelude::*, FlowReturn};
 use gstreamer as gst;
 use tracing::info;
 
-pub const DEFAULT_RTSP_URI: &str = "rtsp://localhost:8554/vsa";
+pub const DEFAULT_RTSP_URI: &str = "localhost:8554/vsa";
 pub const FRAMES: u32 = 300;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,15 +14,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     gst::init()?;
 
+    let base_rtsp_uri = std::env::var("RTSP_URI").unwrap_or(DEFAULT_RTSP_URI.to_owned());
+    let rtsp_uri = format!("rtsp://{base_rtsp_uri}", base_rtsp_uri = base_rtsp_uri);
+
+    info!("RTSP URI: {}", rtsp_uri);
+
     // Elements
     let src = gst::ElementFactory::make("rtspsrc").build()?;
     // Ensures that we're reading from the default stream.
-    src.set_property_from_str("location", DEFAULT_RTSP_URI);
+    src.set_property_from_str("location", &rtsp_uri);
     src.set_property_from_str("protocols", "tcp");
 
-    let depay = gst::ElementFactory::make("rtph264depay").build()?;
-    let parse = gst::ElementFactory::make("h264parse").build()?;
-    let decode = gst::ElementFactory::make("avdec_h264").build()?;
+    let depay = gst::ElementFactory::make("rtph265depay").build()?;
+    let parse = gst::ElementFactory::make("h265parse").build()?;
+    let decode = gst::ElementFactory::make("avdec_h265").build()?;
     let convert = gst::ElementFactory::make("videoconvert").build()?;
     // lossless compression
     let encoder = gst::ElementFactory::make("pngenc").build()?;
