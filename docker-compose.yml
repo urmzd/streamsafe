@@ -1,0 +1,12 @@
+services:
+  video_server:
+    image: "bluenviron/mediamtx"
+    network_mode: "host"
+  video_stream:
+    image: "jrottenberg/ffmpeg"
+    network_mode: "host"
+    volumes:
+      - type: bind
+        source: "video.mov"
+        target: "/video.mov"
+    command: "-stream_loop -1 -re -i /video.mov -c:v libx264 -preset medium -c:a aac -strict -2 -f rtsp rtsp://localhost:8554/vsa"
