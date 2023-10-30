@@ -1,11 +1,55 @@
-use ctrlc;
-use gst::{glib::RustClosure, prelude::*, FlowReturn};
+use gst::{glib, prelude::*, MessageView};
 use gstreamer as gst;
-use std::sync::mpsc::channel;
-use tracing::info;
+use std::{thread, time::Duration};
+use termion::input::TermRead;
+use tracing::{error, info};
 
+// Algorithm:
+//  Global:
+//      - frame_buffer
+//  Thread 1:
+//      - produce png frames into frame_buffer
+//      - on 300 frames, send_frames_to_collector(frames[frame_start..=frame_end])
+//  Thread 2:
+//  the collector should do the following:
+//      in parallel:
+//          - hash frames
+//      on hash_complete:
+//          - create video_segment_metadata
+//          - aggregate to mkv
+//      on_mkv_complete:
+//          - upload video_segment to storage
+//          - upload video_segment_metadata to storage
+//
 pub const DEFAULT_RTSP_URI: &str = "localhost:8554/vsa";
 pub const FRAMES: u32 = 300;
+
+#[derive(PartialEq, Eq, Copy, Clone)]
+enum Command {
+    Quit,
+}
+
+fn handle_keyboard(ready_tx: glib::Sender<Command>) {
+    let mut stdin = termion::async_stdin().keys();
+
+    loop {
+        if let Some(Ok(input)) = stdin.next() {
+            let command = match input {
+                _ => Command::Quit,
+            };
+
+            ready_tx
+                .send(command)
+                .expect("failed to send command through channel");
+
+            if command == Command::Quit {
+                break;
+            }
+        }
+
+        thread::sleep(Duration::from_millis(50));
+    }
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
@@ -23,43 +67,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Elements
     let src = gst::ElementFactory::make("rtspsrc").build()?;
+    let depay = gst::ElementFactory::make("rtph264depay").build()?;
     // Ensures that we're reading from the default stream.
     src.set_property_from_str("location", &rtsp_uri);
     src.set_property_from_str("protocols", "tcp");
 
-    let depay = gst::ElementFactory::make("rtph265depay").build()?;
-    let parse = gst::ElementFactory::make("h265parse").build()?;
-    let decode = gst::ElementFactory::make("avdec_h265").build()?;
+    let parse = gst::ElementFactory::make("h264parse").build()?;
+    let decode = gst::ElementFactory::make("avdec_h264").build()?;
     let convert = gst::ElementFactory::make("videoconvert").build()?;
     // lossless compression
     let encoder = gst::ElementFactory::make("pngenc").build()?;
-    //let sink = gst::ElementFactory::make("multifilesink").build()?;
-    //sink.set_property_from_str("location", "img%d.jpeg");
-    let sink = gst::ElementFactory::make("appsink").build()?;
-    // Allows us to use the 'appsink' element to get frames and metadata
-    sink.set_property("emit-signals", &true);
-    sink.set_property("max-buffers", &FRAMES);
+    let sink = gst::ElementFactory::make("multifilesink").build()?;
+    sink.set_property_from_str("post-messages", "TRUE");
+    sink.set_property_from_str("location", "frames/frame%d.png");
 
     let pipeline = gst::Pipeline::with_name("test-pipeline");
     let links = [&src, &depay, &parse, &decode, &convert, &encoder, &sink];
     pipeline.add_many(&links)?;
     gst::Element::link_many(&links[1..])?;
-
-    sink.connect_closure(
-        "new-sample",
-        false,
-        RustClosure::new(|value| {
-            // cast value[0] to GstElement
-            //let internal_app_sink = value.get(0).downcast_ref::<gst::Element>();
-            let internal_app_sink = value.get(0).unwrap().get::<gst::Element>().unwrap();
-            let sample = internal_app_sink.emit_by_name::<gst::Sample>("pull-sample", &[]);
-
-            info!("Received sample: {:?}", sample);
-
-            // get the sample
-            Some(FlowReturn::Ok.into())
-        }),
-    );
 
     src.connect_pad_added(move |src, src_pad| {
         src.downcast_ref::<gst::Bin>()
@@ -87,20 +112,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     pipeline.set_state(gst::State::Playing)?;
 
-    let (tx, rx) = channel();
+    let main_context = glib::MainContext::default();
 
-    ctrlc::set_handler(move || tx.send(()).expect("Could not send signal"))
-        .expect("Problem setting up");
+    let _guard = main_context.acquire().unwrap();
 
-    loop {
-        let signal_recieved = rx.recv().map(|_| true).unwrap_or(false);
+    let (g_tx, g_rx) = glib::MainContext::channel(glib::Priority::DEFAULT);
 
-        if signal_recieved {
-            info!("Signal received. Exiting.");
-            pipeline.set_state(gst::State::Null)?;
-            break;
+    thread::spawn(move || handle_keyboard(g_tx));
+
+    let main_loop = glib::MainLoop::new(None, false);
+    let main_loop_clone = main_loop.clone();
+    let pipeline_weak = pipeline.downgrade();
+
+    g_rx.attach(Some(&main_context), move |cmd: Command| {
+        let _pipeline = match pipeline_weak.upgrade() {
+            Some(pipeline) => pipeline,
+            None => return glib::ControlFlow::Continue,
+        };
+
+        match cmd {
+            Command::Quit => {
+                main_loop_clone.quit();
+            }
         }
-    }
+
+        glib::ControlFlow::Continue
+    });
+
+    let bus = pipeline.bus().expect("pipeline received");
+
+    let _bus_watch = bus.add_watch(move |_, msg| {
+        match msg.view() {
+            MessageView::Element(element) => {
+                error!("Error from element {:?}: {:?}", element, msg);
+            }
+            _ => {}
+        }
+
+        glib::ControlFlow::Continue
+    });
+
+    main_loop.run();
 
     Ok(())
 }

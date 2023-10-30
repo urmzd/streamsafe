@@ -9,4 +9,4 @@ services:
       - type: bind
         source: "video.mov"
         target: "/video.mov"
-    command: "-stream_loop -1 -re -i /video.mov -c:v libx264 -preset medium -c:a aac -strict -2 -f rtsp rtsp://localhost:8554/vsa"
+    command: "-re -stream_loop -1 -i /video.mov -c:v libx264 -c:a copy -f rtsp rtsp://localhost:8554/vsa"
