@@ -1,6 +1,10 @@
-use gst::{glib, prelude::*, MessageView, State};
+use gst::{
+    glib::{self, RustClosure, Value},
+    prelude::*,
+    MessageView, State,
+};
 use gstreamer as gst;
-use std::{io, thread, time::Duration};
+use std::{io, sync::{atomic::AtomicU32, Arc, Mutex}, thread, time::Duration};
 use termion::{input::TermRead, raw::IntoRawMode};
 use tracing::{error, info};
 
@@ -66,26 +70,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("RTSP URI: {}", rtsp_uri);
 
-    // we add video names to this buffer
-    let video_buffer: Vec<&str> = Vec::new();
 
     // Elements
     let src = gst::ElementFactory::make("rtspsrc").build()?;
-    let depay = gst::ElementFactory::make("rtph264depay").build()?;
+    let depay = gst::ElementFactory::make("rtph265depay").build()?;
     // Ensures that we're reading from the default stream.
     src.set_property_from_str("location", &rtsp_uri);
     src.set_property_from_str("protocols", "tcp");
 
-    let parse = gst::ElementFactory::make("h264parse").build()?;
-    let decode = gst::ElementFactory::make("avdec_h264").build()?;
-    let convert = gst::ElementFactory::make("videoconvert").build()?;
-    let encoder = gst::ElementFactory::make("x264enc").build()?;
+    let parse = gst::ElementFactory::make("h265parse").build()?;
+    //let decode = gst::ElementFactory::make("avdec_h265").build()?;
+    //let convert = gst::ElementFactory::make("videoconvert").build()?;
+    //let encoder = gst::ElementFactory::make("x264enc").build()?;
     let sink = gst::ElementFactory::make("splitmuxsink").build()?;
+
+    let max_size_time = Duration::from_secs(1);
+
+    sink.set_property_from_str("max-size-time", &max_size_time.as_nanos().to_string());
     sink.set_property_from_str("location", "frames/output%05d.mp4");
 
     let pipeline = gst::Pipeline::with_name("test-pipeline");
     let links = [
-        &src, &depay, &parse, &decode, &convert, &encoder, &sink,
+        &src, &depay, &parse, //&decode,
+        //&convert,
+        //&encoder,
+        &sink,
     ];
     pipeline.add_many(&links)?;
     gst::Element::link_many(&links[1..])?;
@@ -113,6 +122,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             info!("Link succeeded (type: {:?}).", new_pad_type);
         }
     });
+
+    // we add video names to this buffer
+    let video_buffer = Arc::new(Mutex::new(Vec::new()));
+    let counter = AtomicU32::new(0);
+
+    let video_buffer_clone = Arc::clone(&video_buffer);
+
+    // spawn a thread that consumes frames from the video_buffer_clone
+
+    sink.connect_closure(
+        "format-location-full",
+        false,
+        RustClosure::new(move |value| {
+            let internal_sink = value.get(0).unwrap().get::<gst::Element>();
+            let fragment_id = value.get(1).unwrap().get::<u32>().unwrap();
+            let sample = value.get(2).unwrap().get::<gst::Sample>().unwrap();
+
+            let new_count = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+            let new_location = format!("frames/frame{}.mp4", new_count);
+            let mut buffer = video_buffer_clone.lock().unwrap();
+            buffer.push(new_location.clone());
+
+            let new_location_value: Value = new_location.into();
+            let ret_value = Some(new_location_value);
+
+            error!("fragment_id: {}", fragment_id);
+            error!("sample: {:?}", sample);
+
+            ret_value
+        }),
+    );
 
     pipeline.set_state(gst::State::Playing)?;
 
