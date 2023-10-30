@@ -80,16 +80,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let decode = gst::ElementFactory::make("avdec_h264").build()?;
     let convert = gst::ElementFactory::make("videoconvert").build()?;
     let encoder = gst::ElementFactory::make("x264enc").build()?;
-    let mux = gst::ElementFactory::make("mp4mux").build()?;
-    mux.set_property_from_str("fragment-duration", "1000");
-    // maybe: add a h265->h264 encoder
-    let sink = gst::ElementFactory::make("filesink").build()?;
-    //sink.set_property_from_str("post-messages", "TRUE");
-    sink.set_property_from_str("location", "frames/output.mp4");
+    let sink = gst::ElementFactory::make("splitmuxsink").build()?;
+    sink.set_property_from_str("location", "frames/output%05d.mp4");
 
     let pipeline = gst::Pipeline::with_name("test-pipeline");
     let links = [
-        &src, &depay, &parse, &decode, &convert, &encoder, &mux, &sink,
+        &src, &depay, &parse, &decode, &convert, &encoder, &sink,
     ];
     pipeline.add_many(&links)?;
     gst::Element::link_many(&links[1..])?;

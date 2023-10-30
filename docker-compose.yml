@@ -1,3 +1,9 @@
+networks:
+  redpanda_network:
+    driver: bridge
+volumes:
+  redpanda: null
+  minio:
 services:
   video_server:
     image: "bluenviron/mediamtx"
@@ -10,3 +16,49 @@ services:
         source: "video.mov"
         target: "/video.mov"
     command: "-re -stream_loop -1 -i /video.mov -c:v libx264 -c:a copy -f rtsp rtsp://localhost:8554/vsa"
+  minio:
+    image: quay.io/minio/minio
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+    environment:
+      - MINIO_ROOT_USER=ADMIN
+      - MINIO_ROOT_PASSWORD=ADMIN
+    volumes:
+      - minio:/data
+    command: "server /data --console-address :9090"
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.14
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers
+      # from outside the Docker network.
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # Redpanda brokers use the RPC API to communicate with each other internally.
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+    volumes:
+      - redpanda:/var/lib/redpanda/data
+    networks:
+      - redpanda_network
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
