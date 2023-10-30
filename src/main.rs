@@ -1,7 +1,7 @@
-use gst::{glib, prelude::*, MessageView};
+use gst::{glib, prelude::*, MessageView, State};
 use gstreamer as gst;
-use std::{thread, time::Duration};
-use termion::input::TermRead;
+use std::{io, thread, time::Duration};
+use termion::{input::TermRead, raw::IntoRawMode};
 use tracing::{error, info};
 
 // Algorithm:
@@ -30,6 +30,7 @@ enum Command {
 }
 
 fn handle_keyboard(ready_tx: glib::Sender<Command>) {
+    let _stdout = io::stdout().into_raw_mode().unwrap();
     let mut stdin = termion::async_stdin().keys();
 
     loop {
@@ -122,10 +123,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let main_loop = glib::MainLoop::new(None, false);
     let main_loop_clone = main_loop.clone();
-    let pipeline_weak = pipeline.downgrade();
+    let context_weak_pipeline = pipeline.downgrade();
+    let bus_weak_pipeline = pipeline.downgrade();
 
     g_rx.attach(Some(&main_context), move |cmd: Command| {
-        let _pipeline = match pipeline_weak.upgrade() {
+        let _pipeline = match context_weak_pipeline.upgrade() {
             Some(pipeline) => pipeline,
             None => return glib::ControlFlow::Continue,
         };
@@ -153,6 +155,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     main_loop.run();
+
+    pipeline.set_state(State::Null)?;
 
     Ok(())
 }
