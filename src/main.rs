@@ -12,12 +12,12 @@ use tracing::{error, info};
 //      - on 300 frames, send_frames_to_collector(frames[frame_start..=frame_end])
 //  Thread 2:
 //  the collector should do the following:
-//      in parallel:
+//      - create mp4 from png files
+//      - in prallel:
 //          - hash frames
 //      on hash_complete:
 //          - create video_segment_metadata
-//          - aggregate to mkv
-//      on_mkv_complete:
+//      on_mp4_complete:
 //          - upload video_segment to storage
 //          - upload video_segment_metadata to storage
 //
@@ -66,6 +66,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("RTSP URI: {}", rtsp_uri);
 
+    // we add video names to this buffer
+    let video_buffer: Vec<&str> = Vec::new();
+
     // Elements
     let src = gst::ElementFactory::make("rtspsrc").build()?;
     let depay = gst::ElementFactory::make("rtph264depay").build()?;
@@ -76,14 +79,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parse = gst::ElementFactory::make("h264parse").build()?;
     let decode = gst::ElementFactory::make("avdec_h264").build()?;
     let convert = gst::ElementFactory::make("videoconvert").build()?;
-    // lossless compression
-    let encoder = gst::ElementFactory::make("pngenc").build()?;
-    let sink = gst::ElementFactory::make("multifilesink").build()?;
-    sink.set_property_from_str("post-messages", "TRUE");
-    sink.set_property_from_str("location", "frames/frame%d.png");
+    let encoder = gst::ElementFactory::make("x264enc").build()?;
+    let mux = gst::ElementFactory::make("mp4mux").build()?;
+    mux.set_property_from_str("fragment-duration", "1000");
+    // maybe: add a h265->h264 encoder
+    let sink = gst::ElementFactory::make("filesink").build()?;
+    //sink.set_property_from_str("post-messages", "TRUE");
+    sink.set_property_from_str("location", "frames/output.mp4");
 
     let pipeline = gst::Pipeline::with_name("test-pipeline");
-    let links = [&src, &depay, &parse, &decode, &convert, &encoder, &sink];
+    let links = [
+        &src, &depay, &parse, &decode, &convert, &encoder, &mux, &sink,
+    ];
     pipeline.add_many(&links)?;
     gst::Element::link_many(&links[1..])?;
 
@@ -124,7 +131,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let main_loop = glib::MainLoop::new(None, false);
     let main_loop_clone = main_loop.clone();
     let context_weak_pipeline = pipeline.downgrade();
-    let bus_weak_pipeline = pipeline.downgrade();
+    //let bus_weak_pipeline = pipeline.downgrade();
 
     g_rx.attach(Some(&main_context), move |cmd: Command| {
         let _pipeline = match context_weak_pipeline.upgrade() {
@@ -146,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _bus_watch = bus.add_watch(move |_, msg| {
         match msg.view() {
             MessageView::Element(element) => {
-                error!("Error from element {:?}: {:?}", element, msg);
+                error!("Made Element {:?}", element);
             }
             _ => {}
         }
