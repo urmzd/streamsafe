@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0 (2026-04-06)
+
+### Features
+
+- **examples**: add fight-flow and finance-flow pipeline examples ([81fdbfe](https://github.com/urmzd/streamsafe/commit/81fdbfe2d9cce0c522169e8dbda3aca8bb69fe0a))
+
+### Bug Fixes
+
+- **examples**: resolve clippy and fmt errors in fight-flow ([0300504](https://github.com/urmzd/streamsafe/commit/0300504704584113a5a5171ec0f47252e2bbd3d4))
+
+[Full Changelog](https://github.com/urmzd/streamsafe/compare/v0.1.0...v0.2.0)
+
+
 ## 0.1.0 (2026-04-06)
 
 ### Features
