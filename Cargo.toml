@@ -1,3 +1,3 @@
 [workspace]
-members = ["crates/streamsafe"]
+members = ["crates/streamsafe", "examples/fight-flow", "examples/finance-flow"]
 resolver = "2"
