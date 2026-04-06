@@ -8,7 +8,7 @@ pub mod rtsp_source;
 pub mod segment_sink;
 pub mod wav_sink;
 
-pub use audio_extract::AudioExtractor;
+pub use audio_extract::{AudioExtractor, AudioFilter};
 pub use file_source::FileSource;
 pub use frame_counter::FrameCountSplitter;
 pub use rtsp_source::RtspSource;
