@@ -13,7 +13,9 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::time::Duration;
-use streamsafe::{filter_map_fn, PipelineBuilder, Result, Sink, Source, StreamSafeError, Transform};
+use streamsafe::{
+    filter_map_fn, PipelineBuilder, Result, Sink, Source, StreamSafeError, Transform,
+};
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
 
@@ -162,7 +164,7 @@ impl Transform for DetectionTransform {
 
     async fn apply(&mut self, frame: VideoFrame) -> Result<FrameAnalysis> {
         // Stub: alternate between 0 and 2 detected fighters.
-        let fighters = if frame.index % 4 == 0 {
+        let fighters = if frame.index.is_multiple_of(4) {
             vec![] // simulate frames where no fighters are visible
         } else {
             vec![
@@ -181,7 +183,7 @@ impl Transform for DetectionTransform {
             ]
         };
 
-        let has_impact = frame.index % 7 == 0;
+        let has_impact = frame.index.is_multiple_of(7);
         let impacts = if has_impact {
             vec!["right cross landed".to_string()]
         } else {
@@ -304,9 +306,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }))
         .batch(cli.segment_size)
-        .pipe(StitchTransform {
-            segment_counter: 0,
-        })
+        .pipe(StitchTransform { segment_counter: 0 })
         .into(JsonSink::new(&cli.output)?)
         .run()
         .await?;
