@@ -1,4 +1,6 @@
+use crate::broadcast::BroadcastSink;
 use crate::error::{Result, StreamSafeError};
+use crate::filter_transform::FilterTransform;
 use crate::sink::Sink;
 use crate::source::Source;
 use crate::transform::Transform;
@@ -107,6 +109,110 @@ where
     }
 }
 
+/// Wraps a FilterTransform + its predecessor Stage. Items returning None are skipped.
+pub struct FilterMapStage<Prev: Stage, T: FilterTransform<Input = Prev::Output>> {
+    prev: Prev,
+    transform: T,
+}
+
+impl<Prev, T> Stage for FilterMapStage<Prev, T>
+where
+    Prev: Stage,
+    T: FilterTransform<Input = Prev::Output>,
+{
+    type Output = T::Output;
+
+    fn spawn(
+        self,
+        buffer: usize,
+        token: CancellationToken,
+        handles: &mut Vec<JoinHandle<Result<()>>>,
+    ) -> mpsc::Receiver<Self::Output> {
+        let mut rx = self.prev.spawn(buffer, token.clone(), handles);
+        let (tx, out_rx) = mpsc::channel(buffer);
+        let mut transform = self.transform;
+
+        handles.push(tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    biased;
+                    _ = token.cancelled() => return Ok(()),
+                    item = rx.recv() => {
+                        match item {
+                            Some(input) => {
+                                if let Some(output) = transform.apply(input).await? {
+                                    if tx.send(output).await.is_err() {
+                                        return Ok(());
+                                    }
+                                }
+                            }
+                            None => return Ok(()),
+                        }
+                    }
+                }
+            }
+        }));
+
+        out_rx
+    }
+}
+
+/// Accumulates items into batches of a fixed size, emitting `Vec<T>`.
+/// The final batch may be smaller (flushed on stream end).
+pub struct BatchStage<Prev: Stage> {
+    prev: Prev,
+    size: usize,
+}
+
+impl<Prev: Stage> Stage for BatchStage<Prev> {
+    type Output = Vec<Prev::Output>;
+
+    fn spawn(
+        self,
+        buffer: usize,
+        token: CancellationToken,
+        handles: &mut Vec<JoinHandle<Result<()>>>,
+    ) -> mpsc::Receiver<Self::Output> {
+        let mut rx = self.prev.spawn(buffer, token.clone(), handles);
+        let (tx, out_rx) = mpsc::channel(buffer);
+        let batch_size = self.size;
+
+        handles.push(tokio::spawn(async move {
+            let mut batch = Vec::with_capacity(batch_size);
+            loop {
+                tokio::select! {
+                    biased;
+                    _ = token.cancelled() => return Ok(()),
+                    item = rx.recv() => {
+                        match item {
+                            Some(input) => {
+                                batch.push(input);
+                                if batch.len() >= batch_size {
+                                    let full_batch = std::mem::replace(
+                                        &mut batch,
+                                        Vec::with_capacity(batch_size),
+                                    );
+                                    if tx.send(full_batch).await.is_err() {
+                                        return Ok(());
+                                    }
+                                }
+                            }
+                            None => {
+                                if !batch.is_empty() {
+                                    let _ = tx.send(batch).await;
+                                }
+                                return Ok(());
+                            }
+                        }
+                    }
+                }
+            }
+        }));
+
+        out_rx
+    }
+}
+
 /// Builder: accumulates stages with type-safe chaining.
 ///
 /// Each `.pipe()` call wraps the previous stage in a new generic type,
@@ -142,10 +248,48 @@ impl<Stg: Stage> PipelineBuilder<Stg> {
         }
     }
 
+    /// Chain a filter-transform. Items returning `None` are silently dropped.
+    /// Compile-time error if types don't match.
+    pub fn filter_pipe<T>(self, transform: T) -> PipelineBuilder<FilterMapStage<Stg, T>>
+    where
+        T: FilterTransform<Input = Stg::Output>,
+    {
+        PipelineBuilder {
+            stage: FilterMapStage {
+                prev: self.stage,
+                transform,
+            },
+            buffer: self.buffer,
+        }
+    }
+
+    /// Accumulate items into fixed-size batches. The output type becomes `Vec<T>`.
+    /// The final batch may be smaller than `size` (flushed on stream end).
+    pub fn batch(self, size: usize) -> PipelineBuilder<BatchStage<Stg>> {
+        PipelineBuilder {
+            stage: BatchStage {
+                prev: self.stage,
+                size,
+            },
+            buffer: self.buffer,
+        }
+    }
+
     /// Set the channel buffer capacity for all inter-stage channels.
     pub fn buffer(mut self, size: usize) -> Self {
         self.buffer = size;
         self
+    }
+
+    /// Terminate the pipeline by broadcasting each item to two sinks.
+    /// Input must implement `Clone`. For 3+ sinks, nest `BroadcastSink`.
+    pub fn broadcast<A, B>(self, a: A, b: B) -> RunnablePipeline<Stg, BroadcastSink<A, B>>
+    where
+        A: Sink<Input = Stg::Output>,
+        B: Sink<Input = Stg::Output>,
+        Stg::Output: Clone,
+    {
+        self.into(BroadcastSink::new(a, b))
     }
 
     /// Terminate the pipeline with a sink. Returns a runnable pipeline.
