@@ -115,7 +115,7 @@ impl Source for RtspSource {
                         },
                         data: Bytes::copy_from_slice(af.data()),
                         codec: AudioCodec::Aac, // TODO: detect from stream
-                        sample_rate: 0,          // TODO: extract from params
+                        sample_rate: 0,         // TODO: extract from params
                         channels: 0,
                         duration: Duration::ZERO,
                     })));

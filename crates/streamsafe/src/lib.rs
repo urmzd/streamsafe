@@ -151,13 +151,7 @@ mod tests {
         let sink_ref = sink.clone();
 
         PipelineBuilder::from(Counter::new(6))
-            .filter_pipe(filter_map_fn(|n: u32| {
-                if n > 3 {
-                    Some(n)
-                } else {
-                    None
-                }
-            }))
+            .filter_pipe(filter_map_fn(|n: u32| if n > 3 { Some(n) } else { None }))
             .into(sink)
             .run_with_token(CancellationToken::new())
             .await
@@ -222,18 +216,21 @@ mod tests {
         let sink_ref = sink.clone();
 
         PipelineBuilder::from(Counter::new(10))
-            .filter_pipe(filter_map_fn(|n: u32| {
-                if n % 2 == 0 { Some(n) } else { None }
-            }))
+            .filter_pipe(filter_map_fn(
+                |n: u32| {
+                    if n % 2 == 0 {
+                        Some(n)
+                    } else {
+                        None
+                    }
+                },
+            ))
             .batch(2)
             .into(sink)
             .run_with_token(CancellationToken::new())
             .await
             .unwrap();
 
-        assert_eq!(
-            sink_ref.items(),
-            vec![vec![2, 4], vec![6, 8], vec![10]]
-        );
+        assert_eq!(sink_ref.items(), vec![vec![2, 4], vec![6, 8], vec![10]]);
     }
 }

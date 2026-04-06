@@ -46,13 +46,14 @@ impl Mp4SegmentSink {
             std::io::BufWriter::new(std::fs::File::create(path).map_err(StreamSafeError::other)?);
 
         let muxer = muxide::api::MuxerBuilder::new(file)
-            .video(muxide::api::VideoCodec::H264, self.width, self.height, self.fps)
+            .video(
+                muxide::api::VideoCodec::H264,
+                self.width,
+                self.height,
+                self.fps,
+            )
             .build()
-            .map_err(|e| {
-                StreamSafeError::other(std::io::Error::other(
-                    format!("{e:?}"),
-                ))
-            })?;
+            .map_err(|e| StreamSafeError::other(std::io::Error::other(format!("{e:?}"))))?;
 
         self.muxer = Some(muxer);
         tracing::info!(segment = self.segment_index, "opened new segment");
@@ -61,11 +62,9 @@ impl Mp4SegmentSink {
 
     fn close_segment(&mut self) -> Result<()> {
         if let Some(muxer) = self.muxer.take() {
-            muxer.finish().map_err(|e| {
-                StreamSafeError::other(std::io::Error::other(
-                    format!("{e:?}"),
-                ))
-            })?;
+            muxer
+                .finish()
+                .map_err(|e| StreamSafeError::other(std::io::Error::other(format!("{e:?}"))))?;
             tracing::info!(segment = self.segment_index, "closed segment");
             self.segment_index += 1;
         }
@@ -103,11 +102,7 @@ impl Sink for Mp4SegmentSink {
             .as_mut()
             .unwrap()
             .write_video(vf.meta.pts.as_secs_f64(), &vf.data, vf.keyframe)
-            .map_err(|e| {
-                StreamSafeError::other(std::io::Error::other(
-                    format!("{e:?}"),
-                ))
-            })?;
+            .map_err(|e| StreamSafeError::other(std::io::Error::other(format!("{e:?}"))))?;
 
         if vf.meta.end_of_segment {
             self.pending_split = true;

@@ -29,9 +29,8 @@ impl Sink for WavSink {
                 bits_per_sample: 16,
                 sample_format: hound::SampleFormat::Int,
             };
-            self.writer = Some(
-                hound::WavWriter::create(&self.path, spec).map_err(StreamSafeError::other)?,
-            );
+            self.writer =
+                Some(hound::WavWriter::create(&self.path, spec).map_err(StreamSafeError::other)?);
         }
 
         let writer = self.writer.as_mut().unwrap();

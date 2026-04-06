@@ -124,9 +124,9 @@ fn decode_file(
         let stream_idx = stream.index();
         let time_base = stream.time_base();
 
-        let pts_secs = packet.pts().map(|pts| {
-            pts as f64 * time_base.numerator() as f64 / time_base.denominator() as f64
-        });
+        let pts_secs = packet
+            .pts()
+            .map(|pts| pts as f64 * time_base.numerator() as f64 / time_base.denominator() as f64);
         let pts_duration = Duration::from_secs_f64(pts_secs.unwrap_or(0.0));
 
         if Some(stream_idx) == video_stream_idx {
@@ -152,8 +152,7 @@ fn decode_file(
             }
         } else if Some(stream_idx) == audio_stream_idx {
             let data = packet.data().unwrap_or(&[]);
-            let duration_secs = packet.duration() as f64
-                * time_base.numerator() as f64
+            let duration_secs = packet.duration() as f64 * time_base.numerator() as f64
                 / time_base.denominator() as f64;
 
             let frame = Frame::Audio(AudioFrame {

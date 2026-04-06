@@ -4,7 +4,6 @@ use crate::error::Result;
 pub trait Source: Send + 'static {
     type Output: Send + 'static;
 
-    fn produce(
-        &mut self,
-    ) -> impl std::future::Future<Output = Result<Option<Self::Output>>> + Send;
+    fn produce(&mut self)
+        -> impl std::future::Future<Output = Result<Option<Self::Output>>> + Send;
 }
