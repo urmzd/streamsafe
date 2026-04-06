@@ -23,10 +23,13 @@ retina = { version = "0.4", optional = true }
 muxide = { version = "0.2", optional = true }
 hound = { version = "3.5", optional = true }
 url = { version = "2", optional = true }
+# Requires FFmpeg system libraries (brew install ffmpeg / apt install libavcodec-dev libavformat-dev libavutil-dev)
+ffmpeg-next = { version = "7", optional = true }
 
 [features]
 default = ["media"]
 media = ["dep:retina", "dep:muxide", "dep:hound", "dep:url", "dep:futures"]
+ffmpeg = ["media", "dep:ffmpeg-next"]
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
