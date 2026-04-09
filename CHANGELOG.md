@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.1 (2026-04-09)
+
+### Bug Fixes
+
+- **ci**: remove --allow-dirty from cargo publish ([72af4c4](https://github.com/urmzd/streamsafe/commit/72af4c4404d32823f88f5780531d74f5fd5e3d83))
+
+### Documentation
+
+- add LICENSE and README to sub-crate for publishing compliance ([38b454e](https://github.com/urmzd/streamsafe/commit/38b454e868ff1c32a2d8609575d28e0634d57cd6))
+
+[Full Changelog](https://github.com/urmzd/streamsafe/compare/v0.2.0...v0.2.1)
+
+
 ## 0.2.0 (2026-04-06)
 
 ### Features
