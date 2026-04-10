@@ -49,23 +49,22 @@ jobs:
       tag: ${{ steps.sr.outputs.tag }}
       version: ${{ steps.sr.outputs.version }}
 
-  # Uncomment for crates.io publishing:
-  # publish:
-  #   needs: release
-  #   if: needs.release.outputs.released == 'true'
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     id-token: write
-  #     contents: read
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         ref: ${{ needs.release.outputs.tag }}
-  #     - uses: dtolnay/rust-toolchain@stable
-  #     - uses: Swatinem/rust-cache@v2
-  #     - id: auth
-  #       uses: rust-lang/crates-io-auth-action@v1
-  #     - name: Publish
-  #       env:
-  #         CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-  #       run: cargo publish -p streamsafe
+  publish:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish -p streamsafe
