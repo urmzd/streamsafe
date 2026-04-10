@@ -1,6 +1,6 @@
 [package]
 name = "streamsafe"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 rust-version = "1.75"
 description = "Type-safe async pipeline framework for data processing"

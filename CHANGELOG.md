@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2 (2026-04-10)
+
+### Miscellaneous
+
+- enable crates.io publishing in release workflow ([13a8798](https://github.com/urmzd/streamsafe/commit/13a879837844ca671b5465499b7c65faaa685cfc))
+
+[Full Changelog](https://github.com/urmzd/streamsafe/compare/v0.2.1...v0.2.2)
+
+
 ## 0.2.1 (2026-04-09)
 
 ### Bug Fixes
