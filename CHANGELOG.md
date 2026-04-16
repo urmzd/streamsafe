@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.3 (2026-04-16)
+
+### Bug Fixes
+
+- **ci**: migrate sr v4 to v7 for artifact and input support (#1) ([146ce06](https://github.com/urmzd/streamsafe/commit/146ce061533fcbba31d60787952d0fb25926f6ad))
+
+### Misc
+
+- migrate sr config and action to v4 ([7d52534](https://github.com/urmzd/streamsafe/commit/7d525341b80657f2782b01955b8a4fbe23749d2a))
+
+[Full Changelog](https://github.com/urmzd/streamsafe/compare/v0.2.2...v0.2.3)
+
+
 ## 0.2.2 (2026-04-10)
 
 ### Miscellaneous
