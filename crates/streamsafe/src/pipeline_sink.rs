@@ -78,10 +78,7 @@ impl<T: Send + 'static> Sink for PipelineSink<T> {
     type Input = T;
 
     async fn consume(&mut self, input: T) -> Result<()> {
-        let tx = self
-            .tx
-            .as_ref()
-            .ok_or(StreamSafeError::ChannelClosed)?;
+        let tx = self.tx.as_ref().ok_or(StreamSafeError::ChannelClosed)?;
         tx.send(input)
             .await
             .map_err(|_| StreamSafeError::ChannelClosed)

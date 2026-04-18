@@ -2,8 +2,8 @@ use crate::error::{Result, StreamSafeError};
 use crate::error_sink::DiscardErrors;
 use crate::fallible::FallibleTransform;
 use crate::fanout::{spawn_sink_task, Broadcast3Pipeline, BroadcastPipeline};
-use crate::merge::{Merge3Stage, MergeStage};
 use crate::filter_transform::FilterTransform;
+use crate::merge::{Merge3Stage, MergeStage};
 use crate::pipeline_sink::SubPipeline;
 use crate::runtime::{ctrlc_token, join_handles, spawn_error_sink};
 use crate::sink::Sink;
@@ -189,7 +189,9 @@ where
         error_tx: mpsc::Sender<StreamSafeError>,
         handles: &mut Vec<JoinHandle<Result<()>>>,
     ) -> mpsc::Receiver<Self::Output> {
-        let mut rx = self.prev.spawn(buffer, token.clone(), error_tx.clone(), handles);
+        let mut rx = self
+            .prev
+            .spawn(buffer, token.clone(), error_tx.clone(), handles);
         let (tx, out_rx) = mpsc::channel(buffer);
         let mut transform = self.transform;
 
@@ -335,9 +337,9 @@ where
         error_tx: mpsc::Sender<StreamSafeError>,
         handles: &mut Vec<JoinHandle<Result<()>>>,
     ) -> mpsc::Receiver<Self::Output> {
-        let mut upstream_rx =
-            self.prev
-                .spawn(buffer, token.clone(), error_tx.clone(), handles);
+        let mut upstream_rx = self
+            .prev
+            .spawn(buffer, token.clone(), error_tx.clone(), handles);
 
         let (tx_l, rx_l) = mpsc::channel::<Prev::Output>(buffer);
         let (tx_r, rx_r) = mpsc::channel::<Prev::Output>(buffer);
@@ -363,16 +365,11 @@ where
 
         // Build each branch at spawn-time from a ChannelSource seeded with its
         // fan-out receiver, then spawn the resulting Stage on the outer runtime.
-        let left_builder = PipelineBuilder::from(
-            crate::channel_source::ChannelSource::new(rx_l),
-        );
+        let left_builder = PipelineBuilder::from(crate::channel_source::ChannelSource::new(rx_l));
         let left_stage = (self.left)(left_builder).into_stage();
-        let mut left_out =
-            left_stage.spawn(buffer, token.clone(), error_tx.clone(), handles);
+        let mut left_out = left_stage.spawn(buffer, token.clone(), error_tx.clone(), handles);
 
-        let right_builder = PipelineBuilder::from(
-            crate::channel_source::ChannelSource::new(rx_r),
-        );
+        let right_builder = PipelineBuilder::from(crate::channel_source::ChannelSource::new(rx_r));
         let right_stage = (self.right)(right_builder).into_stage();
         let mut right_out = right_stage.spawn(buffer, token.clone(), error_tx, handles);
 
@@ -470,6 +467,7 @@ where
     left: LF,
     middle: MF,
     right: RF,
+    #[allow(clippy::type_complexity)]
     _phantom: std::marker::PhantomData<fn() -> (L, M, R)>,
 }
 
@@ -505,9 +503,9 @@ where
         error_tx: mpsc::Sender<StreamSafeError>,
         handles: &mut Vec<JoinHandle<Result<()>>>,
     ) -> mpsc::Receiver<Self::Output> {
-        let mut upstream_rx =
-            self.prev
-                .spawn(buffer, token.clone(), error_tx.clone(), handles);
+        let mut upstream_rx = self
+            .prev
+            .spawn(buffer, token.clone(), error_tx.clone(), handles);
 
         let (tx_l, rx_l) = mpsc::channel::<Prev::Output>(buffer);
         let (tx_m, rx_m) = mpsc::channel::<Prev::Output>(buffer);
@@ -537,18 +535,15 @@ where
             }
         }));
 
-        let l_builder =
-            PipelineBuilder::from(crate::channel_source::ChannelSource::new(rx_l));
+        let l_builder = PipelineBuilder::from(crate::channel_source::ChannelSource::new(rx_l));
         let l_stage = (self.left)(l_builder).into_stage();
         let mut l_out = l_stage.spawn(buffer, token.clone(), error_tx.clone(), handles);
 
-        let m_builder =
-            PipelineBuilder::from(crate::channel_source::ChannelSource::new(rx_m));
+        let m_builder = PipelineBuilder::from(crate::channel_source::ChannelSource::new(rx_m));
         let m_stage = (self.middle)(m_builder).into_stage();
         let mut m_out = m_stage.spawn(buffer, token.clone(), error_tx.clone(), handles);
 
-        let r_builder =
-            PipelineBuilder::from(crate::channel_source::ChannelSource::new(rx_r));
+        let r_builder = PipelineBuilder::from(crate::channel_source::ChannelSource::new(rx_r));
         let r_stage = (self.right)(r_builder).into_stage();
         let mut r_out = r_stage.spawn(buffer, token.clone(), error_tx, handles);
 
@@ -653,7 +648,11 @@ where
     /// Three-way variant of [`merge`](Self::merge).
     pub fn merge3(a: S1, b: S2, c: S3) -> Self {
         PipelineBuilder {
-            stage: Merge3Stage { s1: a, s2: b, s3: c },
+            stage: Merge3Stage {
+                s1: a,
+                s2: b,
+                s3: c,
+            },
             error_sink: DiscardErrors,
             buffer: 64,
         }
@@ -811,12 +810,7 @@ impl<Stg: Stage, E: Sink<Input = StreamSafeError>> PipelineBuilder<Stg, E> {
     }
 
     /// Three-way variant of [`broadcast`](Self::broadcast).
-    pub fn broadcast3<A, B, C>(
-        self,
-        a: A,
-        b: B,
-        c: C,
-    ) -> Broadcast3Pipeline<Stg, A, B, C, E>
+    pub fn broadcast3<A, B, C>(self, a: A, b: B, c: C) -> Broadcast3Pipeline<Stg, A, B, C, E>
     where
         A: Sink<Input = Stg::Output>,
         B: Sink<Input = Stg::Output>,
@@ -835,6 +829,7 @@ impl<Stg: Stage, E: Sink<Input = StreamSafeError>> PipelineBuilder<Stg, E> {
 
     /// Three-way variant of [`split`](Self::split). All three sub-chains must
     /// produce the same output type; outputs merge into a single stream.
+    #[allow(clippy::type_complexity)]
     pub fn split3<LF, MF, RF, L, M, R>(
         self,
         left: LF,

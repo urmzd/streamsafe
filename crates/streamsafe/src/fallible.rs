@@ -12,7 +12,6 @@ pub trait FallibleTransform: Send + 'static {
     fn apply(
         &mut self,
         input: Self::Input,
-    ) -> impl std::future::Future<
-        Output = Result<std::result::Result<Self::Output, StreamSafeError>>,
-    > + Send;
+    ) -> impl std::future::Future<Output = Result<std::result::Result<Self::Output, StreamSafeError>>>
+           + Send;
 }

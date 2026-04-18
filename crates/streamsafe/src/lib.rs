@@ -246,8 +246,14 @@ mod tests {
 
         let items_a = Arc::new(Mutex::new(Vec::new()));
         let items_b = Arc::new(Mutex::new(Vec::new()));
-        let sink_a = SlowSink { delay: Duration::from_millis(20), items: items_a.clone() };
-        let sink_b = SlowSink { delay: Duration::from_millis(20), items: items_b.clone() };
+        let sink_a = SlowSink {
+            delay: Duration::from_millis(20),
+            items: items_a.clone(),
+        };
+        let sink_b = SlowSink {
+            delay: Duration::from_millis(20),
+            items: items_b.clone(),
+        };
 
         let start = Instant::now();
         PipelineBuilder::from(Counter::new(5))
@@ -276,24 +282,25 @@ mod tests {
         impl Transform for TimesTen {
             type Input = u32;
             type Output = u32;
-            async fn apply(&mut self, n: u32) -> Result<u32> { Ok(n * 10) }
+            async fn apply(&mut self, n: u32) -> Result<u32> {
+                Ok(n * 10)
+            }
         }
 
         struct TimesHundred;
         impl Transform for TimesHundred {
             type Input = u32;
             type Output = u32;
-            async fn apply(&mut self, n: u32) -> Result<u32> { Ok(n * 100) }
+            async fn apply(&mut self, n: u32) -> Result<u32> {
+                Ok(n * 100)
+            }
         }
 
         let sink = CollectSink::<u32>::new();
         let sink_ref = sink.clone();
 
         PipelineBuilder::from(Counter::new(3))
-            .split(
-                |b| b.pipe(TimesTen),
-                |b| b.pipe(TimesHundred),
-            )
+            .split(|b| b.pipe(TimesTen), |b| b.pipe(TimesHundred))
             .into(sink)
             .run_with_token(CancellationToken::new())
             .await
@@ -310,14 +317,18 @@ mod tests {
         impl Transform for TimesTen {
             type Input = u32;
             type Output = u32;
-            async fn apply(&mut self, n: u32) -> Result<u32> { Ok(n * 10) }
+            async fn apply(&mut self, n: u32) -> Result<u32> {
+                Ok(n * 10)
+            }
         }
 
         struct PlusOne;
         impl Transform for PlusOne {
             type Input = u32;
             type Output = u32;
-            async fn apply(&mut self, n: u32) -> Result<u32> { Ok(n + 1) }
+            async fn apply(&mut self, n: u32) -> Result<u32> {
+                Ok(n + 1)
+            }
         }
 
         let sink = CollectSink::<u32>::new();
@@ -396,7 +407,9 @@ mod tests {
         impl Transform for Add {
             type Input = u32;
             type Output = u32;
-            async fn apply(&mut self, n: u32) -> Result<u32> { Ok(n + self.0) }
+            async fn apply(&mut self, n: u32) -> Result<u32> {
+                Ok(n + self.0)
+            }
         }
 
         let sink = CollectSink::<u32>::new();
@@ -432,10 +445,8 @@ mod tests {
             .broadcast(
                 PipelineSink::new(move |b| b.pipe(Double).into(gif_like)),
                 PipelineSink::new(move |b| {
-                    b.filter_pipe(filter_map_fn(|n: u32| {
-                        if n >= 2 { Some(n) } else { None }
-                    }))
-                    .into(png_like)
+                    b.filter_pipe(filter_map_fn(|n: u32| if n >= 2 { Some(n) } else { None }))
+                        .into(png_like)
                 }),
             )
             .run_with_token(CancellationToken::new())
@@ -468,7 +479,10 @@ mod tests {
             .run_with_token(CancellationToken::new())
             .await;
 
-        assert!(result.is_err(), "sub-pipeline error must surface via finish()");
+        assert!(
+            result.is_err(),
+            "sub-pipeline error must surface via finish()"
+        );
     }
 
     #[tokio::test]
@@ -495,7 +509,9 @@ mod tests {
 
         let result = PipelineBuilder::from(Counter::new(5))
             .broadcast(
-                FailsAtThree { items: failing_items.clone() },
+                FailsAtThree {
+                    items: failing_items.clone(),
+                },
                 healthy,
             )
             .run_with_token(CancellationToken::new())
@@ -515,16 +531,11 @@ mod tests {
             type Input = u32;
             type Output = u32;
 
-            async fn apply(
-                &mut self,
-                n: u32,
-            ) -> Result<std::result::Result<u32, StreamSafeError>> {
+            async fn apply(&mut self, n: u32) -> Result<std::result::Result<u32, StreamSafeError>> {
                 if n % 2 == 0 {
                     Ok(Ok(n))
                 } else {
-                    Ok(Err(StreamSafeError::Other(
-                        format!("odd: {n}").into(),
-                    )))
+                    Ok(Err(StreamSafeError::Other(format!("odd: {n}").into())))
                 }
             }
         }
@@ -545,7 +556,9 @@ mod tests {
         assert_eq!(main_ref.items(), vec![2, 4, 6]);
         let errors = error_ref.lock().unwrap();
         assert_eq!(errors.len(), 3);
-        assert!(errors.iter().all(|e| matches!(e, StreamSafeError::Other(_))));
+        assert!(errors
+            .iter()
+            .all(|e| matches!(e, StreamSafeError::Other(_))));
     }
 
     #[tokio::test]
@@ -558,10 +571,7 @@ mod tests {
             type Input = u32;
             type Output = u32;
 
-            async fn apply(
-                &mut self,
-                n: u32,
-            ) -> Result<std::result::Result<u32, StreamSafeError>> {
+            async fn apply(&mut self, n: u32) -> Result<std::result::Result<u32, StreamSafeError>> {
                 if n == 3 {
                     Err(StreamSafeError::Other("fatal at 3".into()))
                 } else {
@@ -590,10 +600,7 @@ mod tests {
             type Input = u32;
             type Output = u32;
 
-            async fn apply(
-                &mut self,
-                n: u32,
-            ) -> Result<std::result::Result<u32, StreamSafeError>> {
+            async fn apply(&mut self, n: u32) -> Result<std::result::Result<u32, StreamSafeError>> {
                 if n % 2 == 0 {
                     Ok(Ok(n))
                 } else {
