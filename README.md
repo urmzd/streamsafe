@@ -1,8 +1,25 @@
-# StreamSafe
+<p align="center">
+  <h1 align="center">StreamSafe</h1>
+  <p align="center">
+    Type-safe async pipeline framework for data processing in Rust. Mismatched types between stages are compile errors, not runtime crashes.
+    <br /><br />
+    <a href="#installation">Install</a>
+    &middot;
+    <a href="https://github.com/urmzd/streamsafe/issues">Report Bug</a>
+    &middot;
+    <a href="https://crates.io/crates/streamsafe">Crates.io</a>
+  </p>
+</p>
 
-Type-safe async pipeline framework for data processing in Rust.
+<p align="center">
+  <a href="https://github.com/urmzd/streamsafe/actions/workflows/ci.yml"><img src="https://github.com/urmzd/streamsafe/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  &nbsp;
+  <a href="https://crates.io/crates/streamsafe"><img src="https://img.shields.io/crates/v/streamsafe" alt="crates.io"></a>
+  &nbsp;
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/streamsafe" alt="License"></a>
+</p>
 
-Build pipelines with **compile-time type checking** — mismatched types between stages are compile errors, not runtime crashes.
+Build pipelines with compile-time type checking: the full chain is known at compile time, so mismatched stages never reach runtime.
 
 ## Quick Start
 
@@ -172,6 +189,10 @@ docker-compose up -d video_server video_stream
 cargo run --example rtsp_archiver
 ```
 
+## Agent Skill
+
+This repo's conventions are available as portable agent skills in [`skills/`](skills/).
+
 ## License
 
-Apache-2.0
+[Apache-2.0](LICENSE)
