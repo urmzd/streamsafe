@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0 (2026-04-19)
+
+### Features
+
+- **pipeline**: add error rail, parallel fan-out, split, merge ([3c13b36](https://github.com/urmzd/streamsafe/commit/3c13b363310804a6d96839ff30bb4d51a2d09b9f))
+
+### Bug Fixes
+
+- **ci**: satisfy rustfmt and clippy type_complexity ([85e52cb](https://github.com/urmzd/streamsafe/commit/85e52cbc36aa583c13766c72b2b2beb89c01831d))
+
+### Refactoring
+
+- move cargo publish into sr hooks.post_release ([5433847](https://github.com/urmzd/streamsafe/commit/54338470a4c6ffaea09e797b1b873258b67d331d))
+
+[Full Changelog](https://github.com/urmzd/streamsafe/compare/v0.3.0...v0.4.0)
+
+
 ## 0.3.0 (2026-04-18)
 
 ### Features
