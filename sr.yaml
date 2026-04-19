@@ -62,3 +62,6 @@ packages:
       - crates/streamsafe/Cargo.toml
     stage_files:
       - Cargo.lock
+    hooks:
+      post_release:
+        - cargo publish -p streamsafe
