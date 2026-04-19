@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (2026-04-18)
+
+### Features
+
+- **pipeline**: add error rail, parallel fan-out, split, merge (#2) ([78dc1a6](https://github.com/urmzd/streamsafe/commit/78dc1a62c38596ce8a390b3b1fa55872f49d8ac6))
+
+[Full Changelog](https://github.com/urmzd/streamsafe/compare/v0.2.3...v0.3.0)
+
+
 ## 0.2.3 (2026-04-16)
 
 ### Bug Fixes
