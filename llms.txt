@@ -1,0 +1,21 @@
+# streamsafe
+
+> A type-safe async pipeline framework for data processing in Rust. Mismatched types between stages are compile errors, not runtime crashes.
+
+A pipeline is a chain of stages — `Source` produces, `Transform` maps, `Sink` consumes — each running as its own tokio task connected by bounded `mpsc` channels. `PipelineBuilder` encodes the full chain in the type system via recursive generics, so a stage whose output does not match the next stage's input fails to compile. Combinators cover filtering (`filter_pipe`), recoverable per-item errors routed to an error rail (`try_pipe`), batching, fan-out (`broadcast`), fan-in (`merge`), and split/rejoin. Backpressure is automatic (a full channel blocks its upstream) and shutdown is cooperative via `CancellationToken` or Ctrl-C. The optional `media` feature ships a `Frame` model and ready-made nodes for RTSP ingestion and MP4/WAV output. Durability is intentionally not built in: as an SDK, the write-ahead log is the caller's to build by persisting a unit before transmitting it downstream.
+
+## Docs
+
+- [README](README.md): Overview, quick start, installation, core concepts, media feature
+- [AGENTS.md](AGENTS.md): Architecture, module roles, usage, commands, code style
+
+## Key Files
+
+- Core traits: crates/streamsafe/src/source.rs, crates/streamsafe/src/transform.rs, crates/streamsafe/src/sink.rs
+- Variants: crates/streamsafe/src/filter_transform.rs, crates/streamsafe/src/fallible.rs
+- Composition: crates/streamsafe/src/pipeline.rs, crates/streamsafe/src/pipeline_sink.rs
+- Fan-out / fan-in: crates/streamsafe/src/fanout.rs, crates/streamsafe/src/merge.rs, crates/streamsafe/src/broadcast.rs
+- Sources / sinks: crates/streamsafe/src/channel_source.rs, crates/streamsafe/src/error_sink.rs
+- Runtime: crates/streamsafe/src/runtime.rs, crates/streamsafe/src/error.rs, crates/streamsafe/src/lib.rs
+- Media: crates/streamsafe/src/media/mod.rs, crates/streamsafe/src/media/rtsp_source.rs, crates/streamsafe/src/media/segment_sink.rs, crates/streamsafe/src/media/wav_sink.rs, crates/streamsafe/src/media/audio_extract.rs, crates/streamsafe/src/media/frame_counter.rs
+- Examples: crates/streamsafe/examples/rtsp_archiver.rs, crates/streamsafe/examples/audio_extract.rs, examples/fight-flow, examples/finance-flow
