@@ -56,19 +56,19 @@ streamsafe = { version = "0.1", default-features = false }
 
 Three traits form the pipeline:
 
-- **`Source<Output>`** — produces items. Returns `Ok(None)` when exhausted.
-- **`Transform<Input, Output>`** — maps one item to another.
-- **`Sink<Input>`** — consumes items (terminal stage).
+- **`Source<Output>`**: produces items. Returns `Ok(None)` when exhausted.
+- **`Transform<Input, Output>`**: maps one item to another.
+- **`Sink<Input>`**: consumes items (terminal stage).
 
-`PipelineBuilder` chains them with recursive generics (like Iterator adapters). Each `.pipe()` call wraps the previous stage in a new type — the full chain is known at compile time.
+`PipelineBuilder` chains them with recursive generics (like Iterator adapters). Each `.pipe()` call wraps the previous stage in a new type, so the full chain is known at compile time.
 
 ```rust
-// This compiles — types align:
+// This compiles because the types align:
 PipelineBuilder::from(rtsp_source)       // Output = Frame
     .pipe(FrameCountSplitter::new(300))  // Input = Frame, Output = Frame
     .into(Mp4SegmentSink::new(...))      // Input = Frame ✓
 
-// This is a compile error — WavSink expects AudioFrame, not Frame:
+// This is a compile error: WavSink expects AudioFrame, not Frame:
 PipelineBuilder::from(rtsp_source)       // Output = Frame
     .into(WavSink::new("out.wav"))       // Input = AudioFrame ✗
 ```
@@ -90,7 +90,7 @@ enum Frame {
 }
 ```
 
-Each variant is self-contained — no `Option` fields to check at runtime. Pattern matching enforces handling.
+Each variant is self-contained, with no `Option` fields to check at runtime. Pattern matching enforces handling.
 
 ### Nodes
 
