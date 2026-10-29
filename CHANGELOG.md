@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.1 (2026-10-29)
+
+### Bug Fixes
+
+- **deps**: patch vulnerable dependencies (#7) ([b4fb683](https://github.com/urmzd/streamsafe/commit/b4fb683c4aba6630abb21b41cb269d39fd105f22))
+
+### Misc
+
+- **readme**: align with fleet standard (#6) ([8530d8c](https://github.com/urmzd/streamsafe/commit/8530d8c50bdb102ecca46bcbc7f9fe2838d50d94))
+- **release**: read the sr-releaser key from the release environment (#5) ([ba2e2b8](https://github.com/urmzd/streamsafe/commit/ba2e2b8f595a8d230c6a028fa946819f62a4e465))
+- upgrade urmzd/sr action to v9 (#4) ([3d57f9b](https://github.com/urmzd/streamsafe/commit/3d57f9be092e092b3fb1eb81fcbe6f935ef9b294))
+- bump GitHub Actions to Node 24 majors and switch app token to client-id ([0eaea96](https://github.com/urmzd/streamsafe/commit/0eaea96f29ea6e759243ad1c15990babcd850de1))
+- add AGENTS.md and llms.txt (#3) ([7263c58](https://github.com/urmzd/streamsafe/commit/7263c58436302d9a3ff214efb14f94de0cb0371e))
+- **ci**: bump sr to v8, convert post_release hook to typed cargo publisher ([b34edd3](https://github.com/urmzd/streamsafe/commit/b34edd3a8aee7128429c387fac97ef2267f7a172))
+- **ci**: remove unused force input from release workflow ([c0e1fa7](https://github.com/urmzd/streamsafe/commit/c0e1fa79ea78e76bd843d39611824d3d639ce85e))
+- **community**: add GitHub community-health files ([3c20535](https://github.com/urmzd/streamsafe/commit/3c20535e15e0c9df4038f652e2f6be59ca483c9b))
+- **fix**: standardize README header and Agent Skill section ([1c76965](https://github.com/urmzd/streamsafe/commit/1c769653c4543d9e53021e7bf51550f1e69fe0c1))
+
+[Full Changelog](https://github.com/urmzd/streamsafe/compare/v0.4.0...v0.4.1)
+
+
 ## 0.4.0 (2026-04-19)
 
 ### Features
